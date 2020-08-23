@@ -1,0 +1,14 @@
+4,Altar of the Brood,1,C
+4,Banishing Knack,1,D
+4,Battered Golem,3,A
+4,Dispel,1,Z
+8,Island,0,F
+3,Molten Nursery,3,C
+5,Mountain,0,F
+4,Nettle Drone,3,A|C
+4,Retraction Helix,1,D
+4,Serum Visions,1,E
+4,Shivan Reef,0,G
+4,Swiftwater Cliffs,0,F
+4,Tormod's Crypt,0,B
+4,Welding Jar,0,B
