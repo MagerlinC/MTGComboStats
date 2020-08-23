@@ -120,8 +120,8 @@ def play_game():
         if(not (will_start and num_turns == 0)):
             hand.append(draw_single(deck))
         has_played_mana = False
+        # Play mana
         for card in hand:
-            # Play mana
             if "F" in card.groups and not has_played_mana:
                 board_mana.append(card)
                 hand.remove(card)
@@ -137,13 +137,12 @@ def play_game():
         has_won = did_win(board_cards)
         num_turns += 1
         if(has_won):
-            ""
-            #print(f"Won a game after {num_turns} turns! Board state at win: ", board_cards)
+            print(f"Won a game after {num_turns} turns! Board state at win: ", board_cards)
     return (has_won, num_turns)
 
 def main():
     # Number of games to play
-    num_games = 1000
+    num_games = 2
     results = []
 
     for n in range(num_games):

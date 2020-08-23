@@ -8,7 +8,7 @@
 4,Nettle Drone,3,A|C
 4,Retraction Helix,1,D
 4,Serum Visions,1,E
-4,Shivan Reef,0,G
+4,Shivan Reef,0,F
 4,Swiftwater Cliffs,0,F
 4,Tormod's Crypt,0,B
 4,Welding Jar,0,B
