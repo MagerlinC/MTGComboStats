@@ -59,14 +59,35 @@ def did_win(board_cards):
         did_use_card = False
         for group in card.groups:
             if not group in seen_groups and group in win_groups and not did_use_card:
-                seen_groups.append(card)
+                seen_groups.append(group)
                 did_use_card = True
     return len(seen_groups) >= len(win_groups)
 
 
-def get_optimal_mana_spend(hand, num_mana):
-    # Ignore playing lands for optimal mana spend
-    hand_to_use = list(filter(lambda card: ("F" not in card.groups), hand))
+def card_in_win_group(card):
+    is_win_group = False
+    for group in card.groups:
+        if group in win_groups:
+            is_win_group = True
+    return is_win_group
+
+# Check if the card's group is already represented on the board
+def card_group_present_on_board(in_card, board):
+    board_groups = []
+    for card in board:
+        for group in card.groups:
+            if group not in board_groups:
+                board_groups.append(group)
+
+    is_present = False
+    for group in in_card.groups:
+        if group in board_groups:
+            is_present = True
+    return is_present
+
+def get_optimal_mana_spend(hand, num_mana, board_cards):
+    # Ignore playing lands for optimal mana spend, or cards that are in a group we already have on board
+    hand_to_use = list(filter(lambda card: (card_in_win_group(card) and not card_group_present_on_board(card, board_cards)), hand))
     if(len(hand_to_use) == 0):
         return []
     card_values = list(map(lambda card: (1), hand_to_use))
@@ -105,10 +126,19 @@ def play_game():
                 board_mana.append(card)
                 hand.remove(card)
                 has_played_mana = True
-        cards_to_play = get_optimal_mana_spend(hand, len(board_mana))
+        
+        # Spend Mana optimally for card cost
+        cards_to_play = get_optimal_mana_spend(hand, len(board_mana), board_cards)
+        # Remove cards from hand
+        for card in cards_to_play:
+            hand.remove(card)
+        # Add to board
         board_cards += cards_to_play
         has_won = did_win(board_cards)
         num_turns += 1
+        if(has_won):
+            ""
+            #print(f"Won a game after {num_turns} turns! Board state at win: ", board_cards)
     return (has_won, num_turns)
 
 def main():
@@ -129,8 +159,13 @@ def main():
             won_games += 1
             turn_wins.append(num_turns)
         else:
-            lost_games +=1
-    print(f"\nWon {won_games / (won_games + lost_games) * 100}% of {num_games} games. Avg. win by turn: {sum(turn_wins) / len(turn_wins)}")
+            lost_games += 1
+    if(won_games <= 0):
+        print("Won 0 games...")
+    else:
+        win_percentage = round(won_games / (won_games + lost_games) * 100, 2)
+        avg_turns_to_win = round(sum(turn_wins) / len(turn_wins), 2)
+        print(f"\nWon {win_percentage}% of {num_games} games. Avg. win by turn: {avg_turns_to_win}")
 
 if __name__ == "__main__":
     main()
