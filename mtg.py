@@ -4,8 +4,8 @@ from knapsack_solver import zeroOneKnapsack
 
 # You need a card from each group here to win
 # A: Untap Creatures, B: 0 mana artifacts, 
-# C: win-cons (dmg/tap), D: untap instants, E: card draw, F: Mana
-card_groups = ["A", "B", "C", "D", "E", "F"]
+# C: win-cons (dmg/tap), D: untap instants, E: card draw, F: Mana, Z: Useless for combo
+card_groups = ["A", "B", "C", "D", "E", "F", "Z"]
 win_groups = [card_groups[0], card_groups[1], card_groups[2], card_groups[3]]
 
 class Card:
@@ -61,7 +61,8 @@ def has_combo(cards):
             if not group in seen_groups and group in win_groups and not did_use_card:
                 seen_groups.append(group)
                 did_use_card = True
-    return len(seen_groups) >= len(win_groups)
+    has_combo = len(seen_groups) >= len(win_groups)
+    return has_combo
 
 
 def card_in_win_group(card):
@@ -89,41 +90,57 @@ def scry(n, deck, board, hand):
 def card_group_present_in_collection(groups, collection):
     board_groups = []
     for card in collection:
-        for gr in card.groups:
-            if gr not in board_groups:
-                board_groups.append(gr)
-    #If card has multiple groups, check that all match
-    if(len(groups) > 1):
-        found_groups = []
-        for g in groups:
-            if g in board_groups:
-                found_groups.append(g)
-        return len(found_groups) == len(groups)
-    return groups[0] in board_groups
+        if len(card.groups) > 1:
+            if card.groups[0] in groups:
+                board_groups.append(card.groups[1])
+            else:
+                board_groups.append(card.groups[0])
+        else:
+            board_groups.append(card.groups[0])
+    matches = []
+    for g in groups:
+        if g in board_groups:
+            matches.append(g)
+    return len(matches) == len(groups)
 
 def get_optimal_mana_spend(hand, num_mana, board_cards):
-    # Ignore playing lands for optimal mana spend, or cards that are in a group we already have on board
-    hand_to_use = list(filter(lambda card: (card_in_win_group(card) and not card_group_present_in_collection(card.groups, board_cards)), hand))
-    if(len(hand_to_use) == 0):
-        return []
-    card_values = list(map(lambda card: (1), hand_to_use))
-    card_costs = list(map(lambda card: (card.cost), hand_to_use))
-    res = zeroOneKnapsack(card_values, card_costs, num_mana)
- 
+    print_selection = False
     selected_cards = []
-    for i in range(len(res[1]) - 1):
-        if(res[1][i] != 0):
-            selected_cards.append(hand_to_use[i])
+
+    # Ignore playing cards that are not part of the winning combo, or cards that are in a group we already have on board
+    # Also don't include 0 cost cards in algorithm - we will just always play those irregardless
+    algo_hand = list(filter(lambda card: (card_in_win_group(card) and card.cost > 0 and not card_group_present_in_collection(card.groups, board_cards)), hand))
+    res = None
+    if(num_mana > 0 and len(algo_hand) > 0):
+        res = zeroOneKnapsack(algo_hand, num_mana)
+ 
+    if res:
+        for i in range(len(res[1]) - 1):
+            if(res[1][i] != 0):
+                selected_cards.append(algo_hand[i])
+
+    # Always include free cards if they help us win
+    free_cards = list(filter(lambda card: (card_in_win_group(card) and card.cost == 0), hand))
+    for card in free_cards:
+        if card.cost == 0:
+            selected_cards.append(card)
+    if print_selection and len(selected_cards) > 0 and num_mana >= 4:
+        print("***")
+        print("Board state: ", board_cards)
+        print("hand: ", algo_hand)
+        print("Mana: ", num_mana)
+        print("Selected cards: ", selected_cards)
     return selected_cards
 
 def play_game():
-    
     # --- GAME CONFIG ---
 
     # Print board states at game win
     print_game_wins = False
-    # Ignores using card draw
+    # Use card draw spells?
     use_card_draw = True
+    # Use scrying mechanic?
+    use_scrying = True
 
     # --- CONFIG END ---
 
@@ -156,9 +173,9 @@ def play_game():
                 board_mana.append(card)
                 hand.remove(card)
                 has_played_mana = True
-        # Spend mana on draw-spells, draw cards, UNLESS YOU CAN WIN
-        can_win = has_combo(hand) and len(board_mana) >= 3
-        if(use_card_draw and not can_win):
+        # Spend mana on draw-spells unless we already have all the cards we need
+        can_win = has_combo(hand + board_cards)
+        if(use_card_draw and not can_win and len(deck) > 0):
             for card in hand:
                 # Check if card is a draw spell, and if we have mana to cast it
                 if "E" in card.groups and ((len(board_mana) - used_mana) > 0):
@@ -171,10 +188,12 @@ def play_game():
                     else:
                         drawn_card = draw_single(deck)
                     hand.append(drawn_card)
-                    # Since we use serum visions, we also scry 2
-                    scried_and_kept_cards = scry(2, deck, board_cards, hand)
-                    # Add to scried cards
-                    scried_cards += scried_and_kept_cards
+                    if(use_scrying and len(deck) > 0):
+                        # Since we use serum visions, we also scry 2
+                        num_cards_to_scry = min(2, len(deck))
+                        scried_and_kept_cards = scry(num_cards_to_scry, deck, board_cards, hand)
+                        # Add to scried cards
+                        scried_cards += scried_and_kept_cards
 
         available_mana = len(board_mana) - used_mana
         # Spend Mana optimally for card cost
